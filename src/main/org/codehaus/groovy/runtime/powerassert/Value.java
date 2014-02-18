@@ -25,10 +25,12 @@ package org.codehaus.groovy.runtime.powerassert;
 public class Value {
     private final Object value;
     private final int column;
+    private final String stringRepresentation;
 
     public Value(Object value, int column) {
         this.value = value;
         this.column = column;
+        this.stringRepresentation = AssertionRenderer.valueToString(value);
     }
 
     public Object getValue() {
@@ -37,5 +39,9 @@ public class Value {
 
     public int getColumn() {
         return column;
+    }
+
+    public String toString() {
+        return stringRepresentation;
     }
 }

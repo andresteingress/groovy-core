@@ -580,6 +580,17 @@ assert func.call(42) == null
         }
     }
 
+    void testMethodCallExpressionSpreadDotUnique() {
+        isRendered """
+ assert [[a: "22"], [a: "22"]]*.a.unique() == null
+                               | |        |
+                               | [22]     false
+                               [22, 22]
+          """, {
+            assert [[a: "22"], [a: "22"]]*.a.unique() == null
+        }
+    }
+
     /*
     void testMapEntryExpression() {
         // tested as part of testMapExpression

@@ -94,7 +94,7 @@ public final class AssertionRenderer {
             Value next = i + 1 < values.size() ? values.get(i + 1) : null;
             if (next != null && next.getColumn() == value.getColumn()) continue;
 
-            String str = valueToString(value.getValue());
+            String str = value.toString();
             if (str == null) continue; // null signals the value shouldn't be rendered
 
             String[] strs = str.split("\r\n|\r|\n");
@@ -144,7 +144,7 @@ public final class AssertionRenderer {
      * @param value a value
      * @return a string representation of the given value
      */
-    private static String valueToString(Object value) {
+    public static String valueToString(Object value) {
         String toString;
 
         try {
