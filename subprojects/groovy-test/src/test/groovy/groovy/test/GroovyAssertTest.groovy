@@ -1,5 +1,5 @@
 /*
- * Copyright 2003-2012 the original author or authors.
+ * Copyright 2003-2014 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,10 +16,58 @@
 package groovy.test
 
 import org.junit.Test
-import static groovy.test.GroovyAssert.shouldFail
-import static groovy.test.GroovyAssert.shouldFailWithCause
+import static groovy.test.GroovyAssert.*
 
+/**
+ * @author Paul King
+ * @author Andre Steingress
+ */
 class GroovyAssertTest {
+
+    @Test
+    void assertArrayEqualsForObjectArray() {
+        assertArrayEquals(["a", "b"] as Object[], ["a", "b"] as Object[])
+    }
+
+    @Test
+    void assertLengthWithObjectIntCharArray() {
+        assertLength(1, ['c'] as char[])
+        assertLength(1, [42] as int[])
+        assertLength(1, ['c'] as Object[])
+        assertLength(0, [] as Object[])
+    }
+
+    @Test
+    void assertContainsWithCharacters() {
+        assertContains('a' as char, "abc" as char[])
+
+        def t = shouldFail {
+            assertContains('d' as char, "abc" as char[])
+        }
+
+        assert t.message == "d not in {'a', 'b', 'c' }"
+    }
+
+    @Test
+    void assertToStringWithString() {
+        assertToString("test", "test")
+    }
+
+    @Test
+    void assertScriptWithAssertion() {
+        assertScript('assert 1 == 1')
+
+        shouldFail {
+            assertScript('assert 1 == 2')
+        }
+    }
+
+    @Test
+    void notYetImplementedStaticMethod() {
+        if (notYetImplemented(this)) return
+
+        assert 1 == 2
+    }
 
     @Test
     void shouldFailAndReturnException() {
@@ -54,6 +102,17 @@ class GroovyAssertTest {
             new GroovyAssertDummyClass().throwExceptionWithCause()
         }
         assert throwable instanceof NullPointerException
+    }
+
+    @Test
+    void assertEqualsWithNulls() {
+        assertEquals(null, null)
+    }
+
+    @Test
+    void shouldFailWithScript() {
+        shouldFail 'assert 1 == 2'
+        shouldFail AssertionError, 'assert 1 == 2'
     }
 }
 
