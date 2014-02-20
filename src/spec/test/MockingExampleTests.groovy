@@ -1,3 +1,6 @@
+import groovy.mock.interceptor.MockFor
+import groovy.mock.interceptor.StubFor
+
 /*
  * Copyright 2003-2014 the original author or authors.
  *
@@ -23,10 +26,102 @@ class MockingExampleTests extends GroovyTestCase {
     }
     // end::map_coercion[]
 
-    void testAssertions() {
+    void testMapCoercion() {
         // tag::map_coercion[]
         def service = [convert: { String key -> 'some text' }] as TranslationService
         assert 'some text' == service.convert('key.text')
         // end::map_coercion[]
+    }
+
+    void testClosureCoercion() {
+        // tag::closure_coercion[]
+        def service = { String key -> 'some text' } as TranslationService
+        assert 'some text' == service.convert('key.text')
+        // end::closure_coercion[]
+    }
+
+    // tag::collaborators[]
+    class Person {
+        String first, last
+    }
+
+    class Family {
+        Person father, mother
+        def nameOfMother() { "$mother.first $mother.last" }
+    }
+    // end::collaborators[]
+
+    void testMockFor() {
+        // tag::mockFor[]
+        def mock = new MockFor(Person)      // <1>
+        mock.demand.getFirst{ 'dummy' }
+        mock.demand.getLast{ 'name' }
+        mock.use {                          // <2>
+            def mary = new Person(first:'Mary', last:'Smith')
+            def f = new Family(mother:mary)
+            assert f.nameOfMother() == 'dummy name'
+        }
+        mock.expect.verify()                // <3>
+        // end::mockFor[]
+    }
+
+    void testStubFor() {
+        // tag::stubFor[]
+        def stub = new StubFor(Person)      // <1>
+        stub.demand.with {                  // <2>
+            getLast{ 'name' }
+            getFirst{ 'dummy' }
+        }
+        stub.use {                          // <3>
+            def john = new Person(first:'John', last:'Smith')
+            def f = new Family(father:john)
+            assert f.nameOfFather() == 'dummy name'
+        }
+        stub.expect.verify()                // <4>
+        // end::stubFor[]
+    }
+
+    void testEMC() {
+        // tag::emc[]
+        String.metaClass.swapCase = {->
+            def sb = new StringBuffer()
+            delegate.each {
+                sb << (Character.isUpperCase(it as char) ? Character.toLowerCase(it as char) :
+                    Character.toUpperCase(it as char))
+            }
+            sb.toString()
+        }
+
+        def s = "heLLo, worLD!"
+        assert s.swapCase() == 'HEllO, WORld!'
+        // end::emc[]
+
+        // tag::emc4[]
+        GroovySystem.metaClassRegistry.setMetaClass(java.lang.String, null)
+        // end::emc4[]
+    }
+
+    // tag::emc2[]
+    class Book {
+        String title
+    }
+    // end::emc2[]
+
+    void testEMCStaticMethod() {
+        // tag::emc2[]
+        Book.metaClass.static.create << { String title -> new Book(title:title) }
+
+        def b = Book.create("The Stand")
+        assert b.title == 'The Stand'
+        // end::emc2[]
+    }
+
+    void testEMCConstructor() {
+        // tag::emc3[]
+        Book.metaClass.constructor << { String title -> new Book(title:title) }
+
+        def b = new Book("The Stand")
+        assert b.title == 'The Stand'
+        // end::emc3[]
     }
 }

@@ -32,10 +32,10 @@ Groovy comes with a rather powerful version of `assert` also known as _power ass
 def x = 1
 assert x == 2
 
-Assertion failed: 
-assert x == 2
-       | |
-       1 false
+// Assertion failed:
+// assert x == 2
+//        | |
+//        1 false
 ------------------------------------
 
 The `java.lang.AssertionError` that is thrown whenever the assertion can not be validated successfully, contains
@@ -51,15 +51,35 @@ types, and more advanced expressions in general:
 def x = [1,2,3,4,5]
 assert (x << 6) == [6,7,8,9,10]
 
-Assertion failed: 
-assert (x << 6) == [6,7,8,9,10]
-        | |     |
-        | |     false
-        | [1, 2, 3, 4, 5, 6]
-        [1, 2, 3, 4, 5, 6]
+// Assertion failed:
+// assert (x << 6) == [6,7,8,9,10]
+//         | |     |
+//         | |     false
+//         | [1, 2, 3, 4, 5, 6]
+//         [1, 2, 3, 4, 5, 6]
 ------------------------------------
 
-Another difference from Java is that in Groovy, assertions are _enabled by default_. It has been a language design decision to remove the possibility to deactivate assertions. Or, as Betrand Meyer stated, ``it makes no sense to turn off your swim ring if you chose to put your feets into real water``.
+Another difference from Java is that in Groovy, assertions are _enabled by default_. It has been a language design
+decision to remove the possibility to deactivate assertions. Or, as Bertrand Meyer stated, ``it makes no sense to take
+off your swim ring if put yourself into real water``.
+
+One thing to be aware when using power assertion statements are calling methods with side-effects. As the internal
+mechanism that constructs the error message does only store references to instances under target,
+ it happens that the error message text is invalid when using side-effecting methods:
+
+[source,groovy]
+.Assertion Statement with Side-Effect Method `unique`
+----------------------------------------------------------
+assert [[1,2,3,3,3,3,4]].first().unique() == [1,2,3]
+
+// Assertion failed:
+// assert [[1,2,3,3,3,3,4]].first().unique() == [1,2,3]
+//                          |       |        |
+//                          |       |        false
+//                          |       [1, 2, 3, 4]
+//                          [1, 2, 3, 4]           // <1>
+----------------------------------------------------------
+<1> The error message shows the actual state of the collection, not the state before the `unique` method was applied
 
 [NOTE]
 If you choose to provide a custom assertion error message this can be done by using the Java syntax +assert
@@ -83,13 +103,119 @@ closures to build your custom mocks.
 
 By using maps or expandos, we can incorporate desired behaviour of a collaborator very easily as shown here:
 
+[source,groovy]
+----
 include::{projectdir}/src/spec/test/MockingExampleTests.groovy[tags=map_coercion,indent=0]
+----
 
 ==== Closure Coercion
 
+Groovy's 'as' operator can be used with closures in a neat way which is great for developer testing in simple scenarios.
+We haven't found this technique to be so powerful that we want to do away with dynamic mocking, but it can be very
+useful in simple cases none-the-less.
+
+Classes or interfaces holding a single method, including SAM classes, can be used to coerce a closure block to be an object of the given type.
+Be aware that for doing this, Groovy internally create a proxy object descending for the given class. So the object
+will not be a direct instance of the given class. This important if, for example, the generated proxy object's meta-class
+is altered afterwards.
+
+Let's have an example on coercing a closure to be of a specific type:
+
+[source,groovy]
+----
+include::{projectdir}/src/spec/test/MockingExampleTests.groovy[tags=closure_coercion,indent=0]
+----
+
 ==== MockFor and StubFor
 
-==== Instance-Style MockFor and StubFor
+The Groovy mocking and stubbing classes can be found in package `groovy.mock.interceptor`.
+
+The `MockFor` class supports (typically unit) testing of classes in isolation by allowing a _strictly ordered_ expectation of the behavior of collaborators to
+be defined. A typical test scenario involves a class under test and one or more collaborators. In such a scenario it is
+often desirable to just test the business logic of the class under test. One strategy for doing that is to replace
+the collaborator instances with simplified mock objects to help isolate out the logic in the test target. MockFor
+allows such mocks to be created using meta-programming. The desired behavior of collaborators is defined as a behavior
+specification. The behavior is enforced and checked automatically.
+
+Let's assume our target classes look like this:
+
+[source,groovy]
+----
+include::{projectdir}/src/spec/test/MockingExampleTests.groovy[tags=collaborators,indent=0]
+----
+
+With `MockFor`, a mock's expectation is always sequence dependent and its use automatically ends with a call to `verify`:
+
+[source,groovy]
+----
+include::{projectdir}/src/spec/test/MockingExampleTests.groovy[tags=mockFor,indent=0]
+----
+<1> a new mock is created by a new instance of `MockFor`
+<2> a `Closure` is passed to `use` which enables the mocking functionality
+<3> a call to `verify` checks whether the sequence and number of method calls is as expected
+
+The `StubFor` class supports (typically unit) testing of classes in isolation by allowing a _loosely-ordered_ expectation
+of the behavior of collaborators to be defined. A typical test scenario involves a class under test and one or more
+collaborators. In such a scenario it is often desirable to just test the business logic of the CUT. One strategy for
+doing that is to replace the collaborator instances with simplified stub objects to help isolate out the logic
+in the target class. `StubFor` allows such stubs to be created using meta-programming. The desired behavior of
+collaborators is defined as a behavior specification.
+
+In contrast to `MockFor` the stub expectation verified with `verify` is sequence independent and its use is optional:
+
+[source,groovy]
+----
+include::{projectdir}/src/spec/test/MockingExampleTests.groovy[tags=stubFor,indent=0]
+----
+<1> a new stub is created by a new instance of `StubFor`
+<2> the `with` method is used for delegating all calls inside the closure to the `StubFor` instance
+<3> a `Closure` is passed to `use` which enables the stubbing functionality
+<4> a call to `verify` (optional) checks whether the number of method calls is as expected
+
+`MockFor` and `StubFor` can not be used to test statically compiled classes e.g classes that use +@CompileStatic+.
+To stub and/or mock these classes you can use Spock or one of the Java mocking libraries.
+
+==== Expando Meta-Class (EMC)
+
+Groovy includes a special `MetaClass` called an `ExpandoMetaClass` (EMC) that allows you to dynamically add methods,
+constructors, properties and static methods using a neat closure syntax.
+
+Every `java.lang.Class` is supplied with a special `metaClass` property that will give you a reference to an
+`ExpandoMetaClass` instance. The expando meta-class is not restricted to custom classes, it can be used for
+JDK classes like for example `java.lang.String` as well:
+
+[source,groovy]
+----
+include::{projectdir}/src/spec/test/MockingExampleTests.groovy[tags=emc,indent=0]
+----
+
+The `ExpandoMetaClass` is a rather good candidate for mocking functionality as it allows for more advanced stuff
+like mocking static methods
+
+[source,groovy]
+----
+include::{projectdir}/src/spec/test/MockingExampleTests.groovy[tags=emc2,indent=0]
+----
+
+or even constructors
+
+[source,groovy]
+----
+include::{projectdir}/src/spec/test/MockingExampleTests.groovy[tags=emc3,indent=0]
+----
+
+If you want to change the `metaClass` property on a per test method level you need to remove the changes that were
+done to the meta-class, otherwise those changes would be persistent. The changes are removed by replacing the meta-class
+in the `GroovyMetaClassRegistry`:
+
+[source,groovy]
+----
+include::{projectdir}/src/spec/test/MockingExampleTests.groovy[tags=emc4,indent=0]
+----
+
+Another alternative is to register a `MetaClassRegistryChangeEventListener`, track the changed classes and remove
+the changes in the cleanup method of your chosen testing runtime. A good example can be found https://github.com/grails/grails-core/blob/master/grails-bootstrap/src/main/groovy/org/codehaus/groovy/grails/cli/support/MetaClassRegistryCleaner.java[in the Grails web
+development framework].
 
 === GDK Methods
 
@@ -186,6 +312,8 @@ as not yet implemented. As long as the test method fails and is marked with `not
 ----
 include::{projectdir}/src/spec/test/GroovyTestCaseExampleTests.groovy[tags=not_yet_implemented,indent=0]
 ----
+<1> a call to `notYetImplemented` is necessary for `GroovyTestCase` to get the current method stack.
+<2> as long as the test evaluates to `false` the test execution will be successful.
 
 As the `notYetImplemented` method invocation feels a bit unnatural, an AST transformation named `@NotYetImplemented`
 has been contributed. It allows to annotate the test method as not yet implemented, with the exact same behavior as

@@ -56,9 +56,9 @@ class GroovyTestCaseExampleTests extends GroovyTestCase {
 
     // tag::not_yet_implemented[]
     void testNotYetImplemented1() {
-        if (notYetImplemented()) return
+        if (notYetImplemented()) return   // <1>
 
-        assert 1 == 2
+        assert 1 == 2                     // <2>
     }
     // end::not_yet_implemented[]
 
